@@ -5,6 +5,7 @@ import viteLogo from '/vite.svg';
 import './App.css';
 import LoginPage from './pages/loginPage';
 import RegisterPage from './pages/registerPage';
+import PinPage from './pages/pinPage';
 
 
 
@@ -15,6 +16,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage/>} />
+                    <Route path="/pin" element={<PinPage/>} />
                 </Routes>   
             </Router>
         </div>
