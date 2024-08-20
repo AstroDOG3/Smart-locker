@@ -1,47 +1,42 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function RegisterPage() {
-  const [userData, setUserData] = useState({
-    username: '',
-    email: '',
-    password: ''
-  });
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setUserData({
-      ...userData,
-      [name]: value
-    });
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleRegister = async (e) => {
+    e.preventDefault();
+  
     try {
-      const response = await fetch('http://localhost:5000/api/register', { // Adjust the URL as needed
+      const response = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify({ username, email, password }),
       });
-
+  
+      const data = await response.json();
+  
       if (response.ok) {
-        const result = await response.json();
-        console.log('User registered:', result);
-        // Navigate to another page or show a success message
+        // Redirect or notify success
+        navigate('/');  // Redirect to login page
       } else {
-        console.error('Failed to register user');
+        // Display error message
+        setError(data.error || 'Registration failed');
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (err) {
+      setError('Server error. Please try again later.');
     }
   };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <h1 className="text-4xl mb-8">Register</h1>
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+      <form className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm" onSubmit={handleRegister}>
         <div className="mb-4">
           <label className="block text-gray-700 text-xl font-bold mb-2" htmlFor="username">
             Username
@@ -49,41 +44,39 @@ function RegisterPage() {
           <input
             type="text"
             id="username"
-            name="username"
-            value={userData.username}
-            onChange={handleChange}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Your username"
+            placeholder="Username"
           />
         </div>
         <div className="mb-4">
           <label className="block text-gray-700 text-xl font-bold mb-2" htmlFor="email">
-            Email
+            E-mail
           </label>
           <input
             type="email"
             id="email"
-            name="email"
-            value={userData.email}
-            onChange={handleChange}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Your email"
+            placeholder="abcdefg@gmail.com"
           />
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="block text-gray-700 text-xl font-bold mb-2" htmlFor="password">
             Password
           </label>
           <input
             type="password"
             id="password"
-            name="password"
-            value={userData.password}
-            onChange={handleChange}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="********"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            placeholder="*********"
           />
         </div>
+        {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="flex items-center justify-between">
           <button
             type="submit"
