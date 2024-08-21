@@ -1,2 +1,4 @@
 .Ds_Store
 node_modules/
+__pycache__/
+/backend/.env
