@@ -1,3 +1,2 @@
-for backend
 npm install
 npm install express mongoose cors dotenv bcrypt jsonwebtoken
