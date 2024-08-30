@@ -148,14 +148,14 @@ export function BookingPage() {
           Welcome to Lockery
         </Typography>
 
-        {/* Grid for 6 blank boxes */}
+        {/* Grid for 6 boxes with checkbox and input */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          <div className="h-32 bg-gray-200"></div>
-          <div className="h-32 bg-gray-200"></div>
-          <div className="h-32 bg-gray-200"></div>
-          <div className="h-32 bg-gray-200"></div>
-          <div className="h-32 bg-gray-200"></div>
-          <div className="h-32 bg-gray-200"></div>
+          {[...Array(6)].map((_, index) => (
+            <div key={index} className="h-32 bg-gray-200 flex flex-col items-center justify-center p-4">
+              <input type="checkbox" id={`checkbox-${index}`} className="mb-2"/>
+              <input type="text" placeholder={`Option ${index + 1}`} className="border p-1 w-full"/>
+            </div>
+          ))}
         </div>
 
         <Typography color="gray" className="font-normal">
