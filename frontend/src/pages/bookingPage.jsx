@@ -16,6 +16,11 @@ export function BookingPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Updated handleCheckboxChange function to redirect to /pin path
+  const handleCheckboxChange = () => {
+    window.location.href = "/pin"; // Redirect to /pin path
+  };
+
   const navList = (
     <ul className="mt-2 mb-4 flex flex-col gap-2 lg:mb-0 lg:mt-0 lg:flex-row lg:items-center lg:gap-6">
       <Typography
@@ -148,12 +153,44 @@ export function BookingPage() {
           Welcome to Lockery
         </Typography>
 
-        {/* Grid for 6 boxes with checkbox and input */}
+        {/* Grid for 3 boxes with checkbox and input */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          {[...Array(6)].map((_, index) => (
-            <div key={index} className="h-32 bg-gray-200 flex flex-col items-center justify-center p-4">
-              <input type="checkbox" id={`checkbox-${index}`} className="mb-2"/>
-              <input type="text" placeholder={`Option ${index + 1}`} className="border p-1 w-full"/>
+          {[...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="h-32 bg-gray-200 flex flex-col items-center justify-center p-4"
+            >
+              {/* Hot/Cold Text */}
+              <Typography variant="small" color="blue-gray" className="mb-2">
+                HOT
+              </Typography>
+              <input
+                type="checkbox"
+                id={`checkbox-hot-${index}`}
+                className="mb-2"
+                onChange={handleCheckboxChange} // Redirect on checkbox change
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Grid for 3 boxes with checkbox and input */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          {[...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="h-32 bg-gray-200 flex flex-col items-center justify-center p-4"
+            >
+              {/* Hot/Cold Text */}
+              <Typography variant="small" color="blue-gray" className="mb-2">
+                COLD
+              </Typography>
+              <input
+                type="checkbox"
+                id={`checkbox-cold-${index}`}
+                className="mb-2"
+                onChange={handleCheckboxChange} // Redirect on checkbox change
+              />
             </div>
           ))}
         </div>

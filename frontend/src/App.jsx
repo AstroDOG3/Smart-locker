@@ -17,7 +17,7 @@ function App() {
                     <Route path="/pin" element={<PinPage/>} />
                     <Route path="/booking" element={<BookingPage/>}/>
                     <Route path="/detail" element={<DetailPage/>}/>
-                    <Route path="/logout" element={<LogOutPage/>}/> {/* Corrected path to /logout */}
+                    <Route path="/logout" element={<LogOutPage/>}/>
                 </Routes>   
             </Router>
         </div>
