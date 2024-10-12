@@ -12,7 +12,7 @@ function RegisterPage() {
     e.preventDefault();
   
     try {
-      const response = await fetch('http://localhost:5000/api/register', {
+      const response = await fetch('http://localhost:5010/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -30,6 +30,7 @@ function RegisterPage() {
         setError(data.error || 'Registration failed');
       }
     } catch (err) {
+      console.log(err)
       setError('Server error. Please try again later.');
     }
   };

@@ -8,7 +8,11 @@ import jwt from 'jsonwebtoken';  // Make sure jwt is imported
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+}));
+app.options('*', cors())
 app.use(express.json());
 
 // Connect to MongoDB

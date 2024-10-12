@@ -13,7 +13,7 @@ function LoginPage() {
     console.log('Password:', password);  // Debug log
   
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('http://localhost:5010/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -25,7 +25,7 @@ function LoginPage() {
   
       if (response.ok) {
         console.log('Login successful:', data);
-        // Optionally navigate to a different page here
+        navigate
       } else {
         console.error('Login failed:', data.error);
         setError(data.error);  // Show error to user
@@ -38,6 +38,10 @@ function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+    <h1 className="text-6xl mb-8">
+      Welcome to <span style={{ color: 'green' }}>Lockery</span>
+    </h1>
+
       <h1 className="text-4xl mb-8">Login</h1>
       <form className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm" onSubmit={handleLogin}>
         <div className="mb-4">
