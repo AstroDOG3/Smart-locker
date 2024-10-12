@@ -6,12 +6,13 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
   const handleLogin = async (e) => {
     e.preventDefault();
-  
+
     console.log('Email:', email);  // Debug log
     console.log('Password:', password);  // Debug log
-  
+
     try {
       const response = await fetch('http://localhost:5010/api/login', {
         method: 'POST',
@@ -20,12 +21,17 @@ function LoginPage() {
         },
         body: JSON.stringify({ email, password }),
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         console.log('Login successful:', data);
+<<<<<<< HEAD
         navigate
+=======
+        // Redirect to the booking page after successful login
+        navigate('/booking');  // Adjust the path if needed
+>>>>>>> origin/main
       } else {
         console.error('Login failed:', data.error);
         setError(data.error);  // Show error to user
@@ -34,7 +40,6 @@ function LoginPage() {
       console.error('Server error:', err);
     }
   };
-  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
