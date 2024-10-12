@@ -26,12 +26,8 @@ function LoginPage() {
 
       if (response.ok) {
         console.log('Login successful:', data);
-<<<<<<< HEAD
-        navigate
-=======
         // Redirect to the booking page after successful login
         navigate('/booking');  // Adjust the path if needed
->>>>>>> origin/main
       } else {
         console.error('Login failed:', data.error);
         setError(data.error);  // Show error to user
