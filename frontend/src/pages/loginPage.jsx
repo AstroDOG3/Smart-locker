@@ -10,9 +10,6 @@ function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    console.log('Email:', email);  // Debug log
-    console.log('Password:', password);  // Debug log
-
     try {
       const response = await fetch('http://localhost:5010/api/login', {
         method: 'POST',
@@ -25,12 +22,9 @@ function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        console.log('Login successful:', data);
-        // Redirect to the booking page after successful login
-        navigate('/booking');  // Adjust the path if needed
+        navigate('/booking'); // Redirect after successful login
       } else {
-        console.error('Login failed:', data.error);
-        setError(data.error);  // Show error to user
+        setError(data.error); // Show error to user
       }
     } catch (err) {
       console.error('Server error:', err);
@@ -38,50 +32,52 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-    <h1 className="text-6xl mb-8">
-      Welcome to <span style={{ color: 'green' }}>Lockery</span>
-    </h1>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-yellow-100 to-orange-100">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to LOCKERY</h1>
+        <h2 className="text-3xl font-bold text-gray-800 mb-2">Login</h2>
+      </div>
 
-      <h1 className="text-4xl mb-8">Login</h1>
-      <form className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm" onSubmit={handleLogin}>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-xl font-bold mb-2" htmlFor="email">
-            E-mail
+      <form className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md" onSubmit={handleLogin}>
+        <div className="mb-6">
+          <label className="block text-gray-600 font-medium mb-2" htmlFor="email">
+            Your email
           </label>
           <input
             type="email"
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="abcdefg@gmail.com"
+            className="border border-gray-300 rounded-lg w-full py-2 px-4 text-gray-700 focus:outline-none focus:border-orange-400"
+            placeholder="e.g. yourname@domain.com"
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-xl font-bold mb-2" htmlFor="password">
-            Password
+
+        <div className="mb-6">
+          <label className="block text-gray-600 font-medium mb-2" htmlFor="password">
+            Your password
           </label>
           <input
             type="password"
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            className="border border-gray-300 rounded-lg w-full py-2 px-4 text-gray-700 focus:outline-none focus:border-orange-400"
             placeholder="*********"
           />
         </div>
-        {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
-        <div className="flex items-center justify-between">
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            Login
-          </button>
-          <a href="/register" className="text-lg md:text-xl">
-            Create account
-          </a>
+
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        <button
+          type="submit"
+          className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg w-full"
+        >
+          Sign in
+        </button>
+
+        <div className="flex justify-between mt-4 text-sm">
+          <a href="/register" className="text-blue-500 hover:underline">Don't have an account?</a>
         </div>
       </form>
     </div>
