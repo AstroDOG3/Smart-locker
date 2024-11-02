@@ -6,7 +6,7 @@ function RandomNumberGenerator() {
     useEffect(() => {
         const interval = setInterval(() => {
             setRandomNumber(generateRandomNumber());
-        }, 15000); // 15000 ms = 15 seconds
+        }, 900000); // 15 mins
 
         // Cleanup interval on component unmount
         return () => clearInterval(interval);
