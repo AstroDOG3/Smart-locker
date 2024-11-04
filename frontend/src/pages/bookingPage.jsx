@@ -3,7 +3,7 @@ import { Typography, Button } from "@material-tailwind/react";
 
 export function BookingPage() {
   const [selectedLocker, setSelectedLocker] = useState(null);
-  const lockDuration = 3600000; // 1 hour in milliseconds
+  const lockDuration = 900000; // 15 mins hour in milliseconds
 
   useEffect(() => {
     const storedLocker = localStorage.getItem("selectedLocker");
