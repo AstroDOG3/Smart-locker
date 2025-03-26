@@ -5,14 +5,14 @@ import { useNavigate } from "react-router-dom";
 export function BookingPage() {
   const navigate = useNavigate();
   const [bookedLockers, setBookedLockers] = useState([]);
-  const [userData, setUserData] = useState(null); // Store user info
+  const [userData, setUserData] = useState(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState({ hot: false, cold: false }); // Track first click
   const lockDuration = 900000; // 15 mins in milliseconds
 
-  // Fetch user data on login
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user", { // Updated port to match the backend
+        const response = await fetch("http://localhost:5000/api/user", {
           headers: {
             "Authorization": `Bearer ${localStorage.getItem("token")}`,
           },
@@ -32,29 +32,25 @@ export function BookingPage() {
     fetchUserData();
   }, []);
 
-  // Check if locker is already booked or expired
   useEffect(() => {
     const storedBookedLockers = JSON.parse(localStorage.getItem("bookedLockers")) || [];
-    const firstUserId = localStorage.getItem("firstUserId"); // Fetch first user ID from localStorage
+    const firstUserId = localStorage.getItem("firstUserId");
 
-    // Check if the booking is still valid (within lockDuration)
     if (storedBookedLockers.length > 0) {
       const timeElapsed = Date.now() - parseInt(localStorage.getItem("lockerTimestamp"));
 
       if (timeElapsed < lockDuration) {
-        setBookedLockers(storedBookedLockers); // Set booked lockers
+        setBookedLockers(storedBookedLockers);
       } else {
-        // If booking expired, reset localStorage
         localStorage.removeItem("bookedLockers");
         localStorage.removeItem("lockerTimestamp");
-        localStorage.removeItem("firstUserId"); // Remove first user ID when booking expires
+        localStorage.removeItem("firstUserId");
       }
     }
   }, []);
 
   const handleCheckboxChange = async (lockerType) => {
     if (bookedLockers.includes(lockerType)) {
-      // If the locker is already booked, navigate to the PinPage to check PIN
       navigate(`/pin?lockerType=${lockerType}`);
       return;
     }
@@ -70,7 +66,7 @@ export function BookingPage() {
 
       if (response.ok) {
         const updatedBookedLockers = [...bookedLockers, lockerType];
-        setBookedLockers(updatedBookedLockers); // Update booked lockers
+        setBookedLockers(updatedBookedLockers);
         localStorage.setItem("bookedLockers", JSON.stringify(updatedBookedLockers));
         localStorage.setItem("lockerTimestamp", Date.now().toString());
 
@@ -78,7 +74,6 @@ export function BookingPage() {
         const pinData = await pinResponse.json();
         alert(`Your ${lockerType.toUpperCase()} locker PIN is: ${pinData.pin}`);
 
-        // Save first user ID who booked the locker
         localStorage.setItem("firstUserId", userData.id);
 
         navigate(`/pin?lockerType=${lockerType}`);
@@ -90,17 +85,25 @@ export function BookingPage() {
     }
   };
 
+  const handleButtonClick = (lockerType) => {
+    if (!pendingConfirmation[lockerType]) {
+      setPendingConfirmation((prev) => ({ ...prev, [lockerType]: true }));
+    } else {
+      handleCheckboxChange(lockerType);
+      setPendingConfirmation((prev) => ({ ...prev, [lockerType]: false }));
+    }
+  };
+
   const isFirstUser = userData?.id === localStorage.getItem("firstUserId");
   const isLockerBooked = (lockerType) => bookedLockers.includes(lockerType);
   const isButtonDisabled = (lockerType) => isLockerBooked(lockerType) && !isFirstUser;
 
   const resetLockerStatus = () => {
-    // Clear localStorage and reset state
     localStorage.removeItem("bookedLockers");
     localStorage.removeItem("lockerTimestamp");
     localStorage.removeItem("firstUserId");
 
-    setBookedLockers([]); // Clear the booked lockers in state
+    setBookedLockers([]);
     alert("Locker status has been reset.");
   };
 
@@ -121,7 +124,7 @@ export function BookingPage() {
         <Typography variant="h1" className="text-4xl font-bold">
           Booking the Locker for 1 day
         </Typography>
-        <Typography className="text-lg mt-2">Hot:Cold</Typography>
+        <Typography className="text-lg mt-2">Hot   :     Cold</Typography>
       </div>
 
       <div className="flex gap-8">
@@ -134,14 +137,16 @@ export function BookingPage() {
             variant="filled"
             color="blue"
             fullWidth
-            onClick={() => handleCheckboxChange("hot")}
-            disabled={isButtonDisabled("hot")} // Disable button if it's already booked by another user
+            onClick={() => handleButtonClick("hot")}
+            disabled={isButtonDisabled("hot")}
           >
-            {isLockerBooked("hot") 
-              ? isFirstUser 
-                ? "Check PIN" 
-                : "Already booked" 
-              : "Book"}
+            {isLockerBooked("hot")
+              ? isFirstUser
+                ? "Check PIN"
+                : "Already booked"
+              : pendingConfirmation.hot
+                ? "Confirm?"
+                : "Book"}
           </Button>
         </div>
 
@@ -154,25 +159,29 @@ export function BookingPage() {
             variant="filled"
             color="blue"
             fullWidth
-            onClick={() => handleCheckboxChange("cold")}
-            disabled={isButtonDisabled("cold")} // Disable button if it's already booked by another user
+            onClick={() => handleButtonClick("cold")}
+            disabled={isButtonDisabled("cold")}
           >
-            {isLockerBooked("cold") 
-              ? isFirstUser 
-                ? "Check PIN" 
-                : "Already booked" 
-              : "Book"}
+            {isLockerBooked("cold")
+              ? isFirstUser
+                ? "Check PIN"
+                : "Already booked"
+              : pendingConfirmation.cold
+                ? "Confirm?"
+                : "Book"}
           </Button>
         </div>
       </div>
 
+      <div className="text-center mt-16 mb-6 text-gray-100">
+        <Typography variant="h0" className="text-1xl font-bold">
+          **Once you confirm your booking, the temperature control system in the locker will activate.**
+        </Typography>
+      </div>
+
       {/* Reset Locker Status Button */}
       <div className="mt-6">
-        <Button
-          variant="outlined"
-          color="red"
-          onClick={resetLockerStatus}
-        >
+        <Button variant="outlined" color="red" onClick={resetLockerStatus}>
           Reset Locker Status
         </Button>
       </div>
