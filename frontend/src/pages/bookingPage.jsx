@@ -1,37 +1,111 @@
 import React, { useEffect, useState } from "react";
 import { Typography, Button } from "@material-tailwind/react";
+import { useNavigate } from "react-router-dom";
 
 export function BookingPage() {
-  const [selectedLocker, setSelectedLocker] = useState(null);
-  const lockDuration = 900000; // 15 mins hour in milliseconds
+  const navigate = useNavigate();
+  const [bookedLockers, setBookedLockers] = useState([]);
+  const [userData, setUserData] = useState(null); // Store user info
+  const lockDuration = 900000; // 15 mins in milliseconds
 
+  // Fetch user data on login
   useEffect(() => {
-    const storedLocker = localStorage.getItem("selectedLocker");
-    const lockerTimestamp = localStorage.getItem("lockerTimestamp");
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/user", { // Updated port to match the backend
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
 
-    if (storedLocker && lockerTimestamp) {
-      const timeElapsed = Date.now() - parseInt(lockerTimestamp);
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data);
+        } else {
+          throw new Error("Failed to fetch user data");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Check if locker is already booked or expired
+  useEffect(() => {
+    const storedBookedLockers = JSON.parse(localStorage.getItem("bookedLockers")) || [];
+    const firstUserId = localStorage.getItem("firstUserId"); // Fetch first user ID from localStorage
+
+    // Check if the booking is still valid (within lockDuration)
+    if (storedBookedLockers.length > 0) {
+      const timeElapsed = Date.now() - parseInt(localStorage.getItem("lockerTimestamp"));
+
       if (timeElapsed < lockDuration) {
-        setSelectedLocker(storedLocker);
+        setBookedLockers(storedBookedLockers); // Set booked lockers
       } else {
-        localStorage.removeItem("selectedLocker");
+        // If booking expired, reset localStorage
+        localStorage.removeItem("bookedLockers");
         localStorage.removeItem("lockerTimestamp");
+        localStorage.removeItem("firstUserId"); // Remove first user ID when booking expires
       }
     }
   }, []);
 
-  const handleCheckboxChange = (lockerType) => {
-    if (!selectedLocker) {
-      setSelectedLocker(lockerType);
-      localStorage.setItem("selectedLocker", lockerType);
-      localStorage.setItem("lockerTimestamp", Date.now().toString());
-      window.location.href = "/pin";
+  const handleCheckboxChange = async (lockerType) => {
+    if (bookedLockers.includes(lockerType)) {
+      // If the locker is already booked, navigate to the PinPage to check PIN
+      navigate(`/pin?lockerType=${lockerType}`);
+      return;
     }
+
+    try {
+      const response = await fetch("http://localhost:8000/api/locker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ locker_type: lockerType }),
+      });
+
+      if (response.ok) {
+        const updatedBookedLockers = [...bookedLockers, lockerType];
+        setBookedLockers(updatedBookedLockers); // Update booked lockers
+        localStorage.setItem("bookedLockers", JSON.stringify(updatedBookedLockers));
+        localStorage.setItem("lockerTimestamp", Date.now().toString());
+
+        const pinResponse = await fetch(`http://localhost:8000/api/pin?locker_type=${lockerType}`);
+        const pinData = await pinResponse.json();
+        alert(`Your ${lockerType.toUpperCase()} locker PIN is: ${pinData.pin}`);
+
+        // Save first user ID who booked the locker
+        localStorage.setItem("firstUserId", userData.id);
+
+        navigate(`/pin?lockerType=${lockerType}`);
+      } else {
+        console.error("Failed to book locker");
+      }
+    } catch (error) {
+      console.error("Error booking locker:", error);
+    }
+  };
+
+  const isFirstUser = userData?.id === localStorage.getItem("firstUserId");
+  const isLockerBooked = (lockerType) => bookedLockers.includes(lockerType);
+  const isButtonDisabled = (lockerType) => isLockerBooked(lockerType) && !isFirstUser;
+
+  const resetLockerStatus = () => {
+    // Clear localStorage and reset state
+    localStorage.removeItem("bookedLockers");
+    localStorage.removeItem("lockerTimestamp");
+    localStorage.removeItem("firstUserId");
+
+    setBookedLockers([]); // Clear the booked lockers in state
+    alert("Locker status has been reset.");
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-500 to-blue-500 text-white">
-      {/* Navbar with gradient */}
       <nav className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg fixed top-0 z-50">
         <Typography variant="h4" className="font-bold text-2xl">
           LOCKERY
@@ -43,7 +117,6 @@ export function BookingPage() {
         </a>
       </nav>
 
-      {/* Content */}
       <div className="text-center mt-16 mb-6">
         <Typography variant="h1" className="text-4xl font-bold">
           Booking the Locker for 1 day
@@ -62,9 +135,13 @@ export function BookingPage() {
             color="blue"
             fullWidth
             onClick={() => handleCheckboxChange("hot")}
-            disabled={!!selectedLocker}
+            disabled={isButtonDisabled("hot")} // Disable button if it's already booked by another user
           >
-            Book
+            {isLockerBooked("hot") 
+              ? isFirstUser 
+                ? "Check PIN" 
+                : "Already booked" 
+              : "Book"}
           </Button>
         </div>
 
@@ -78,11 +155,26 @@ export function BookingPage() {
             color="blue"
             fullWidth
             onClick={() => handleCheckboxChange("cold")}
-            disabled={!!selectedLocker}
+            disabled={isButtonDisabled("cold")} // Disable button if it's already booked by another user
           >
-            Book
+            {isLockerBooked("cold") 
+              ? isFirstUser 
+                ? "Check PIN" 
+                : "Already booked" 
+              : "Book"}
           </Button>
         </div>
+      </div>
+
+      {/* Reset Locker Status Button */}
+      <div className="mt-6">
+        <Button
+          variant="outlined"
+          color="red"
+          onClick={resetLockerStatus}
+        >
+          Reset Locker Status
+        </Button>
       </div>
     </div>
   );

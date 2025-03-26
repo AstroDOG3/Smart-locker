@@ -2,124 +2,152 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';  // Make sure bcrypt is imported
-import jwt from 'jsonwebtoken';  // Make sure jwt is imported
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
 const app = express();
-app.use(cors({
-  origin: '*',
+
+// CORS Configuration
+const corsOptions = {
+  origin: 'http://localhost:5173', // Frontend URL
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-}));
-app.options('*', cors())
-app.use(express.json());
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors()); // Enable preflight requests
+app.use(express.json()); // Enable JSON body parsing
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+// Middleware for logging request time
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  req.setTimeout(10000); // 10 seconds timeout
+  next();
 });
 
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', () => {
-  console.log('Connected to MongoDB');
-});
+// ✅ MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// Define schemas and models
+// Define Mongoose Schemas and Models
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
   username: { type: String, required: true },
-  password: { type: String, required: true },  // hashed
-  email: { type: String, required: true }
+  password: { type: String, required: true }, // Hashed password
+  email: { type: String, required: true, unique: true },
+  phone: { type: String, required: true }, // Store phone number
 });
 
 const lockerSchema = new Schema({
   lockerId: { type: Number, required: true },
-  status: { type: String, required: true },
+  status: { type: String, required: true, default: 'free' },
   assignedUser: { type: Schema.Types.ObjectId, ref: 'User' },
-  lastAccessTime: { type: Date },
-  pin: { type: String }  // hashed or encrypted
+  firstUser: { type: Schema.Types.ObjectId, ref: 'User' }, // Store the first user who booked
+  lastAccessTime: { type: Date, default: Date.now },
+  pin: { type: String },
 });
 
 const User = mongoose.model('User', userSchema);
 const Locker = mongoose.model('Locker', lockerSchema);
 
+// ✅ Register Route
 app.post('/api/register', async (req, res) => {
-    try {
-      const { username, password, email } = req.body;
-        console.log(username)
-        console.log(password)
-        console.log(email)
-      // Check if the email already exists
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'Email already in use' });
-      }
-  
-      // Hash the password before saving
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      const newUser = new User({ username, password: hashedPassword, email });
-      console.log(newUser)
-      await newUser.save();
-  
-      // After registration, send a success response
-      res.status(201).json({ message: 'Registration successful' });
-    } catch (error) {
-      console.error('Registration error:', error);  // Log the error
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
-  
+  try {
+    const { username, password, email, phone } = req.body;
 
-  app.post('/api/login', async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      console.log('Received email:', email);
-      console.log('Received password:', password);
-  
-      // Find the user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-        console.log('User not found');
-        return res.status(400).json({ error: 'Invalid credentials' });
-      }
-  
-      console.log('User found:', user);
-  
-      // Compare the provided password with the hashed password
-      const isMatch = await bcrypt.compare(password, user.password);
-      console.log('Password match:', isMatch);
-  
-      if (!isMatch) {
-        console.log('Password does not match');
-        return res.status(400).json({ error: 'Invalid credentials' });
-      }
-  
-      // Check if JWT_SECRET is defined
-      if (!process.env.JWT_SECRET) {
-        console.error('JWT_SECRET is not defined');
-        return res.status(500).json({ error: 'Server error' });
-      }
-  
-      // Generate JWT token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  
-      // Return success with token
-      res.status(200).json({ message: 'Login successful', token });
-    } catch (error) {
-      console.error('Login error:', error);  // Log error
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
-  
-  
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Email already in use' });
 
-// Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, password: hashedPassword, email, phone });
+    await newUser.save();
+
+    res.status(201).json({ message: 'Registration successful' });
+  } catch (error) {
+    console.error('❌ Registration Error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
+
+// ✅ Login Route
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+
+    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'JWT secret not set' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).json({ message: 'Login successful', token, phone: user.phone });
+  } catch (error) {
+    console.error('❌ Login Error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ Fetch User Data Route (Requires Authentication)
+app.get('/api/user', async (req, res) => {
+  try {
+    const token = req.headers['authorization']?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Token missing' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+    });
+  } catch (err) {
+    console.error('❌ Error fetching user data:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ Booking Route to assign first user
+app.post('/api/book_locker', async (req, res) => {
+  try {
+    const { lockerId, userId } = req.body;
+
+    const locker = await Locker.findOne({ lockerId });
+    if (!locker) return res.status(400).json({ error: 'Locker not found' });
+
+    if (locker.status === 'booked') {
+      return res.status(400).json({ error: 'Locker is already booked' });
+    }
+
+    locker.status = 'booked';
+    locker.assignedUser = userId;
+    if (!locker.firstUser) {
+      locker.firstUser = userId;  // Store the first user who books the locker
+    }
+
+    await locker.save();
+    res.status(200).json({ message: 'Locker booked successfully' });
+  } catch (err) {
+    console.error('❌ Error booking locker:', err);
+    res.status(500).json({ error: 'Error booking locker' });
+  }
+});
+
+const PORT = process.env.PORT || 5020;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

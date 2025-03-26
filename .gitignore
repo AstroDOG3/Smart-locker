@@ -3,3 +3,6 @@ node_modules/
 __pycache__/
 /backend/.env
 .Smart locker Doc
+.env
+.test_api
+.tst

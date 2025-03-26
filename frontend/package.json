@@ -12,10 +12,11 @@
     "dependencies": {
         "@material-tailwind/react": "^2.1.9",
         "autoprefixer": "^10.4.20",
+        "jwt-decode": "^4.0.0",
         "postcss": "^8.4.41",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-router-dom": "^6.26.1",
+        "react-router-dom": "^6.28.2",
         "router-dom": "^2.2.11",
         "tailwindcss": "^3.4.10"
     },

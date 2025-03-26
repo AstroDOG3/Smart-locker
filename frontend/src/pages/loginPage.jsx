@@ -11,7 +11,7 @@ function LoginPage() {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:5010/api/login', {
+      const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,12 +22,15 @@ function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Assuming the backend returns a token on successful login
+        localStorage.setItem('token', data.token); // Store the token for future use
         navigate('/booking'); // Redirect after successful login
       } else {
-        setError(data.error); // Show error to user
+        setError(data.error || 'Login failed'); // Show error to user
       }
     } catch (err) {
       console.error('Server error:', err);
+      setError('Server error: Could not reach backend'); // Set general error message if no response
     }
   };
 
