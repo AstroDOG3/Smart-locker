@@ -6,13 +6,13 @@ export function BookingPage() {
   const navigate = useNavigate();
   const [bookedLockers, setBookedLockers] = useState([]);
   const [userData, setUserData] = useState(null);
-  const [pendingConfirmation, setPendingConfirmation] = useState({ hot: false, cold: false }); // Track first click
+  const [pendingConfirmation, setPendingConfirmation] = useState({ hot: false, cold: false });
   const lockDuration = 900000; // 15 mins in milliseconds
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user", {
+        const response = await fetch("http://localhost:5020/api/user", {
           headers: {
             "Authorization": `Bearer ${localStorage.getItem("token")}`,
           },
@@ -21,6 +21,8 @@ export function BookingPage() {
         if (response.ok) {
           const data = await response.json();
           setUserData(data);
+          localStorage.setItem("username", data.username); // Store username
+          console.log("Username stored:", localStorage.getItem("username")); // Confirm it was stored
         } else {
           throw new Error("Failed to fetch user data");
         }
@@ -50,40 +52,68 @@ export function BookingPage() {
   }, []);
 
   const handleCheckboxChange = async (lockerType) => {
-    if (bookedLockers.includes(lockerType)) {
-      navigate(`/pin?lockerType=${lockerType}`);
-      return;
-    }
+  const username = localStorage.getItem("username");
+  if (!username) {
+    console.error("Username not found in localStorage.");
+    return;
+  }
 
-    try {
-      const response = await fetch("http://localhost:8000/api/locker", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ locker_type: lockerType }),
-      });
+  if (bookedLockers.includes(lockerType)) {
+    navigate(`/pin?lockerType=${lockerType}`);
+    return;
+  }
 
-      if (response.ok) {
-        const updatedBookedLockers = [...bookedLockers, lockerType];
-        setBookedLockers(updatedBookedLockers);
-        localStorage.setItem("bookedLockers", JSON.stringify(updatedBookedLockers));
-        localStorage.setItem("lockerTimestamp", Date.now().toString());
+  try {
+    const response = await fetch("http://localhost:8000/api/locker", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ locker_type: lockerType, username }),
+    });
 
-        const pinResponse = await fetch(`http://localhost:8000/api/pin?locker_type=${lockerType}`);
-        const pinData = await pinResponse.json();
-        alert(`Your ${lockerType.toUpperCase()} locker PIN is: ${pinData.pin}`);
+    if (response.ok) {
+      const updatedBookedLockers = [...bookedLockers, lockerType];
+      setBookedLockers(updatedBookedLockers);
+      localStorage.setItem("bookedLockers", JSON.stringify(updatedBookedLockers));
+      localStorage.setItem("lockerTimestamp", Date.now().toString());
+      localStorage.setItem("firstUserId", userData.id);
 
-        localStorage.setItem("firstUserId", userData.id);
+      const pinResponse = await fetch(`http://localhost:8000/api/pin?locker_type=${lockerType}`);
+      const pinData = await pinResponse.json();
+      alert(`Your ${lockerType.toUpperCase()} locker PIN is: ${pinData.pin}`);
 
-        navigate(`/pin?lockerType=${lockerType}`);
-      } else {
-        console.error("Failed to book locker");
+      // ✅ Send POST to Raspberry Pi to start the Peltier system
+      console.log("Sending request to Pi to start Peltier...");
+
+      try {
+        const piStartResponse = await fetch("https://a638-158-108-228-212.ngrok-free.app/api/start_peltier", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ locker_type: lockerType }),
+        });
+
+        if (piStartResponse.ok) {
+          const piResult = await piStartResponse.json();
+          console.log("Pi response:", piResult);
+        } else {
+          const errorText = await piStartResponse.text();
+          console.error("Failed to start Peltier system. Response:", errorText);
+        }
+      } catch (error) {
+        console.error("Error communicating with Raspberry Pi:", error);
       }
-    } catch (error) {
-      console.error("Error booking locker:", error);
+
+      navigate(`/pin?lockerType=${lockerType}`);
+    } else {
+      console.error("Failed to book locker:", await response.text());
     }
-  };
+  } catch (error) {
+    console.error("Error booking locker:", error);
+  }
+};
 
   const handleButtonClick = (lockerType) => {
     if (!pendingConfirmation[lockerType]) {
@@ -98,13 +128,71 @@ export function BookingPage() {
   const isLockerBooked = (lockerType) => bookedLockers.includes(lockerType);
   const isButtonDisabled = (lockerType) => isLockerBooked(lockerType) && !isFirstUser;
 
-  const resetLockerStatus = () => {
+  const resetLockerStatus = async () => {
     localStorage.removeItem("bookedLockers");
     localStorage.removeItem("lockerTimestamp");
     localStorage.removeItem("firstUserId");
 
     setBookedLockers([]);
     alert("Locker status has been reset.");
+
+    try {
+      // Send reset request to the backend
+      const response = await fetch("http://localhost:8000/api/reset_lockers", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        console.log("Locker statuses reset successfully.");
+        // Optionally send a reset signal to Raspberry Pi here too
+        const piResponse = await fetch("https://a638-158-108-228-212.ngrok-free.app/api/reset_lockers", {
+          method: "POST",
+        });
+        if (piResponse.ok) {
+          console.log("Raspberry Pi locker statuses reset successfully.");
+        } else {
+          console.error("Failed to reset Raspberry Pi locker statuses.");
+        }
+      } else {
+        console.error("Failed to reset lockers.");
+      }
+    } catch (error) {
+      console.error("Error resetting lockers:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    const username = localStorage.getItem("username");
+
+    // Clear the stored data
+    localStorage.removeItem("username");
+    localStorage.removeItem("bookedLockers");
+    localStorage.removeItem("lockerTimestamp");
+    localStorage.removeItem("firstUserId");
+
+    // Send logout request to Raspberry Pi
+    try {
+      const piLogoutResponse = await fetch("https://a638-158-108-228-212.ngrok-free.app/api/free_locker", {
+        method: "POST",
+        body: JSON.stringify({
+          locker_type: "hot", // Specify the type of locker or a shared key
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (piLogoutResponse.ok) {
+        console.log("Successfully informed Raspberry Pi about the logout.");
+      } else {
+        console.error("Failed to inform Raspberry Pi about the logout.");
+      }
+    } catch (error) {
+      console.error("Error during logout process:", error);
+    }
+
+    // Navigate to the login page or home
+    navigate("/");
   };
 
   return (
@@ -113,18 +201,24 @@ export function BookingPage() {
         <Typography variant="h4" className="font-bold text-2xl">
           LOCKERY
         </Typography>
-        <a href="/logout">
-          <Button variant="text" className="text-white">
-            Log out
-          </Button>
-        </a>
+        <Button variant="text" className="text-white" onClick={handleLogout}>
+          Log out
+        </Button>
       </nav>
 
-      <div className="text-center mt-16 mb-6">
+      <div className="text-center mt-20 mb-6">
         <Typography variant="h1" className="text-4xl font-bold">
           Booking the Locker for 1 day
         </Typography>
-        <Typography className="text-lg mt-2">Hot   :     Cold</Typography>
+        <Typography className="text-lg mt-2">
+          Hot : Cold
+        </Typography>
+
+        {userData && (
+          <Typography className="text-md mt-2 text-white">
+            Welcome, <strong>{userData.username}</strong>!
+          </Typography>
+        )}
       </div>
 
       <div className="flex gap-8">
@@ -179,7 +273,6 @@ export function BookingPage() {
         </Typography>
       </div>
 
-      {/* Reset Locker Status Button */}
       <div className="mt-6">
         <Button variant="outlined" color="red" onClick={resetLockerStatus}>
           Reset Locker Status

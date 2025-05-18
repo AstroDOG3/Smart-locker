@@ -11,7 +11,7 @@ function LoginPage() {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('http://localhost:5020/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,15 +22,16 @@ function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Assuming the backend returns a token on successful login
-        localStorage.setItem('token', data.token); // Store the token for future use
-        navigate('/booking'); // Redirect after successful login
+        localStorage.setItem('token', data.token); 
+        localStorage.setItem('username', data.username); // <-- store username
+        navigate('/booking'); 
+      
       } else {
-        setError(data.error || 'Login failed'); // Show error to user
+        setError(data.error || 'Invalid email or password');
       }
     } catch (err) {
       console.error('Server error:', err);
-      setError('Server error: Could not reach backend'); // Set general error message if no response
+      setError('Server error: Could not reach backend');
     }
   };
 
@@ -78,7 +79,6 @@ function LoginPage() {
         >
           Sign in
         </button>
-
         <div className="flex justify-between mt-4 text-sm">
           <a href="/register" className="text-blue-500 hover:underline">Don't have an account?</a>
         </div>

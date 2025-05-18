@@ -6,6 +6,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
+console.log("JWT_SECRET:", process.env.JWT_SECRET);  // Should print your secret key
+console.log("JWT_REFRESH_SECRET:", process.env.JWT_REFRESH_SECRET);  // Should print your refresh token secret
 
 const app = express();
 
@@ -78,19 +80,42 @@ app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
+    console.log("User found:", user);  // Log user to check if it's found
+
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
-    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'JWT secret not set' });
+    if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+      return res.status(500).json({ error: 'JWT secret not set' });
+    }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-    res.status(200).json({ message: 'Login successful', token, phone: user.phone });
+    res.status(200).json({ message: 'Login successful', token, refreshToken, phone: user.phone });
   } catch (error) {
     console.error('❌ Login Error:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ Refresh Token Route
+app.post('/api/refresh-token', async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ error: 'Refresh token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.status(200).json({ token: newToken });
+  } catch (err) {
+    console.error('❌ Error refreshing token:', err);
+    res.status(403).json({ error: 'Invalid or expired refresh token' });
   }
 });
 
@@ -105,7 +130,7 @@ app.get('/api/user', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
-
+    
     const user = await User.findById(userId).select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -118,6 +143,9 @@ app.get('/api/user', async (req, res) => {
       phone: user.phone,
     });
   } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Session expired, please log in again' });
+    }
     console.error('❌ Error fetching user data:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -125,6 +153,7 @@ app.get('/api/user', async (req, res) => {
 
 // ✅ Booking Route to assign first user
 app.post('/api/book_locker', async (req, res) => {
+  console.log("📥 Booking Request Received:", req.body);
   try {
     const { lockerId, userId } = req.body;
 
